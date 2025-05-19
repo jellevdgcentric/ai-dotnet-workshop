@@ -29,7 +29,7 @@ In deze workshop zullen we:
 
 1. **Clone de repository**:
     ```bash
-    git clone https://github.com/jouw-gebruikersnaam/ai-dotnet-workshop.git
+    git clone https://github.com/jellevdgcentric/ai-dotnet-workshop.git
     cd ai-dotnet-workshop
     ```
 

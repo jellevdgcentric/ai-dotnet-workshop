@@ -4,6 +4,8 @@ using Azure.Search.Documents;
 using Azure.Search.Documents.Models;
 using DotNetEnv;
 using OpenAI.Chat;
+using System.Collections.Generic;
+using System.Text;
 
 // Load environment variables from .env file
 Env.Load();
@@ -34,6 +36,10 @@ Uri searchUriEndpoint = new Uri(searchEndpoint);
 SearchClient searchClient = new SearchClient(searchUriEndpoint, bladesVectorName, semanticKeyCredential);
 
 bool isRunning = true;
+List<ChatMessage> chatHistory = new List<ChatMessage>();
+SystemChatMessage systemPrompt = new SystemChatMessage("You are a helpful Blades in the Dark assistant, " +
+        "you are only allowed to respond with information that is provided in the Search Results.");
+chatHistory.Add(systemPrompt);
 
 while (isRunning)
 {
@@ -64,25 +70,28 @@ while (isRunning)
 
     // Response
     string formattedInput = "### User Query: " + input + "\n\n### Search Results: " + resultText;
-
-    SystemChatMessage systemPrompt = new SystemChatMessage("You are a helpful Blades in the Dark assistant, " +
-        "you are only allowed to respond with information that is provided in the Search Results.");
     UserChatMessage userPrompt = new UserChatMessage(formattedInput);
-
-    ChatMessage[] chatMessages = new ChatMessage[] { systemPrompt, userPrompt };
+    
+    // Add user message to history
+    chatHistory.Add(userPrompt);
     
     Console.ForegroundColor = ConsoleColor.Cyan;
     Console.Write("AI: ");
     Console.ForegroundColor = ConsoleColor.White;
     
     // Stream the response
-    await foreach (StreamingChatCompletionUpdate update in chatClient.CompleteChatStreamingAsync(chatMessages))
+    StringBuilder responseBuilder = new StringBuilder();
+    await foreach (StreamingChatCompletionUpdate update in chatClient.CompleteChatStreamingAsync(chatHistory))
     {
         foreach (ChatMessageContentPart part in update.ContentUpdate)
         {
             Console.Write(part.Text);
+            responseBuilder.Append(part.Text);
         }
     }
+    
+    // Add assistant response to history
+    chatHistory.Add(new AssistantChatMessage(responseBuilder.ToString()));
     
     Console.WriteLine();
     Console.WriteLine();

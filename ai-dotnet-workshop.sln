@@ -5,7 +5,7 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "example-consoleapp", "example-consoleapp", "{710B500B-83A5-6984-B47B-AA4DBCF45B69}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ai-dotnet-workshop", "example-consoleapp\ai-dotnet-workshop.csproj", "{6679FAD3-349B-4ADB-8A26-C721F6147BF5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "example-consoleapp", "example-consoleapp\example-consoleapp.csproj", "{6679FAD3-349B-4ADB-8A26-C721F6147BF5}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "example-webapp", "example-webapp\example-webapp.csproj", "{79F42326-77DB-4405-81DA-BCF11374105A}"
 EndProject

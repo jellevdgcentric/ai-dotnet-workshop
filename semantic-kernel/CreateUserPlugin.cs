@@ -1,8 +1,21 @@
 using System.ComponentModel;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.SemanticKernel;
 
 public class CreateUserPlugin
 {
+    private readonly HttpClient _httpClient;
+    
+    public CreateUserPlugin()
+    {
+        _httpClient = new HttpClient
+        {
+            BaseAddress = new Uri("http://localhost:5472")
+        };
+    }
+    
     [KernelFunction("create_user")]
     [Description("Creates a single user")]
     public async Task<User> GetUsersAsync(
@@ -12,9 +25,7 @@ public class CreateUserPlugin
      [Description("The user's first name")] string firstName,
      [Description("The user's last name")] string lastName,
      [Description("The user's phone number including country code")] string phoneNumber
-     )
-    {
-        var api = Refit.RestService.For<UserService>("https://localhost:7311");
+     )    {
         var user = new User()
         {
             Address = address,
@@ -28,7 +39,8 @@ public class CreateUserPlugin
             UpdatedAt = DateTime.Now
         };
 
-        var createdUser = await api.CreateUser(user);
-        return createdUser;
+        var response = await _httpClient.PostAsJsonAsync("/api/user", user);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<User>();
     }
 }

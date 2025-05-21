@@ -1,12 +1,26 @@
 using System.ComponentModel;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.SemanticKernel;
 public class ListUsersPlugin
 {
+    private readonly HttpClient _httpClient;
+    
+    public ListUsersPlugin()
+    {
+        _httpClient = new HttpClient
+        {
+            BaseAddress = new Uri("http://localhost:5472")
+        };
+    }
+    
     [KernelFunction("get_users")]
     [Description("Gets a array of Users")]
-    public Task<User[]> GetUsersAsync()
+    public async Task<User[]> GetUsersAsync()
     {
-        var api = Refit.RestService.For<UserService>("https://localhost:7311");
-        return api.GetUsersAsync();
+        var response = await _httpClient.GetAsync("/api/user");
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<User[]>();
     }
 }

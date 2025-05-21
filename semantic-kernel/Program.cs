@@ -11,9 +11,9 @@ Console.WriteLine("Hello, World!");
 Env.Load();
 
 // Get configuration from environment variables
-var model = Environment.GetEnvironmentVariable("AI_MODEL") ?? "gpt-4o";
-var azureEndpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT") ?? "";
-var apiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY") ?? "";
+var model = Environment.GetEnvironmentVariable("AI_MODEL") ?? throw new ArgumentNullException("AI_MODEL", "AI_MODEL is not set");
+var azureEndpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT") ?? throw new ArgumentNullException("AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_ENDPOINT is not set");
+var apiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY") ?? throw new ArgumentNullException("AZURE_OPENAI_API_KEY", "AZURE_OPENAI_API_KEY is not set");
 
 // Create kernel
 var builder = Kernel.CreateBuilder();

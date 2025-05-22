@@ -5,8 +5,6 @@ using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Spectre.Console;
 using DotNetEnv;
 
-Console.WriteLine("Hello, World!");
-
 // Load environment variables from .env file
 Env.Load();
 
@@ -15,58 +13,80 @@ var model = Environment.GetEnvironmentVariable("AI_MODEL") ?? throw new Argument
 var azureEndpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT") ?? throw new ArgumentNullException("AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_ENDPOINT is not set");
 var apiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY") ?? throw new ArgumentNullException("AZURE_OPENAI_API_KEY", "AZURE_OPENAI_API_KEY is not set");
 
-// Create kernel
-var builder = Kernel.CreateBuilder();
+// Create first kernel for generating poem ideas
+var builder1 = Kernel.CreateBuilder();
+builder1.AddAzureOpenAIChatCompletion(model, azureEndpoint, apiKey);
+var ideaKernel = builder1.Build();
+var ideaService = ideaKernel.GetRequiredService<IChatCompletionService>();
+var ideaHistory = new ChatHistory();
 
-builder.AddAzureOpenAIChatCompletion(model, azureEndpoint, apiKey);
-var kernel = builder.Build();
+// Create second kernel for writing the poem
+var builder2 = Kernel.CreateBuilder();
+builder2.AddAzureOpenAIChatCompletion(model, azureEndpoint, apiKey);
+var poemKernel = builder2.Build();
+var poemService = poemKernel.GetRequiredService<IChatCompletionService>();
+var poemHistory = new ChatHistory();
 
-
-var chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
-
-// Add a plugin (the LightsPlugin class is defined below)
-kernel.Plugins.AddFromType<LightsPlugin>("Lights");
-
-kernel.Plugins.AddFromType<ListUsersPlugin>("ListUsers");
-kernel.Plugins.AddFromType<CreateUserPlugin>("CreateUser");
-
-// kernel.Plugins.AddFromType<GetDateTimePlugin>("GetDateTime");
-
-// Enable planning
-OpenAIPromptExecutionSettings openAIPromptExecutionSettings = new()
+// Main loop
+while (true)
 {
-    FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
-};
+    // Get user question
+    AnsiConsole.MarkupLine("[green]Ask a question for the poem:[/]");
+    var userQuestion = Console.ReadLine() ?? string.Empty;
+    
+    if (string.IsNullOrEmpty(userQuestion))
+        continue;
+    
+    if (userQuestion.ToLower() == "exit")
+        break;
+    
+    // Show first kernel is working
+    AnsiConsole.MarkupLine("[red]Agent 1 is generating poem ideas...[/]");
+    
+    // Generate poem ideas using the first kernel
+    var poemIdeas = await GeneratePoemIdeas(ideaService, ideaHistory, userQuestion);
+    
+    // Display the ideas from the first kernel
+    AnsiConsole.MarkupLine("[red]Agent 1 generated these ideas:[/]");
+    AnsiConsole.MarkupLine($"[red]{poemIdeas}[/]");
+    AnsiConsole.WriteLine();
+    
+    // Show second kernel is working
+    AnsiConsole.MarkupLine("[red]Agent 2 is composing the final poem based on these ideas...[/]");
+    
+    // Generate the final poem using the second kernel
+    var poem = await GeneratePoem(poemService, poemHistory, userQuestion, poemIdeas);
+    
+    // Display the poem
+    AnsiConsole.MarkupLine("[blue]Here's your poem:[/]");
+    AnsiConsole.WriteLine(poem);
+    AnsiConsole.WriteLine();
+    
+    // Show the collaboration summary
+    AnsiConsole.MarkupLine("[red]The two agents worked together: Agent 1 brainstormed ideas, and Agent 2 crafted them into a poem.[/]");
+    AnsiConsole.WriteLine();
+}
 
-// Create a history store the conversation
-var history = new ChatHistory();
-
-// Initiate a back-and-forth chat
-string? userInput;
-do
+// Method to generate poem ideas
+async Task<string> GeneratePoemIdeas(IChatCompletionService service, ChatHistory history, string question)
 {
-    // Collect user input
-    AnsiConsole.Markup("[green]User > [/]");
-    userInput = Console.ReadLine();
+    history.AddUserMessage($"Generate 4 distinct themes or ideas for a poem about: {question}. Be creative and thoughtful.");
+    
+    var response = await service.GetChatMessageContentAsync(history);
+    var ideas = response.Content ?? "No ideas generated";
+    
+    history.AddAssistantMessage(ideas);
+    return ideas;
+}
 
-    if (string.IsNullOrEmpty(userInput) || userInput.Trim().ToLower() == "exit")
-    {
-        break; // Exit the loop if the user input is empty
-    }
-
-    // Add user input
-    history.AddUserMessage(userInput);
-
-    // Get the response from the AI
-    var result = await chatCompletionService.GetChatMessageContentAsync(
-        history,
-        executionSettings: openAIPromptExecutionSettings,
-        kernel: kernel);
-
-    // Print the results
-    Console.WriteLine("Assistant > " + result);
-    Console.WriteLine(); // Add an empty line below the assistant's message
-
-    // Add the message from the agent to the chat history
-    history.AddMessage(result.Role, result.Content ?? string.Empty);
-} while (string.IsNullOrEmpty(userInput) == false);
+// Method to generate the poem
+async Task<string> GeneratePoem(IChatCompletionService service, ChatHistory history, string question, string ideas)
+{
+    history.AddUserMessage($"Based on these ideas: {ideas}\n\nWrite a poem about '{question}'. The poem should have exactly 4 sections, and must include the phrase 'AI is the future' somewhere in the poem. Make it creative and emotional.");
+    
+    var response = await service.GetChatMessageContentAsync(history);
+    var poem = response.Content ?? "Could not generate a poem";
+    
+    history.AddAssistantMessage(poem);
+    return poem;
+}
